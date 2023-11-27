@@ -85,32 +85,62 @@
 //     renderTodos();
 // });
 
-class TodoApp {
-    static ul = document.querySelector(".todos");
-    constructor() {
-        this.todos = [
-            {
-                text: "Breakfast",
-                status: "todo",
-                id: "3ea21f49-47d4-4e5b-b8ca-1376940c381d"
-            },
-            {
-                text: "Dinner",
-                status: "todo",
-                id: "3ea21f49-47d4-4e5b-b8ca-1376940c381c"
-            }
-        ];
+class Storage {
+    get() {
+        const todos = localStorage.getItem("todos");
+        if (!todos) return [];
+        return JSON.parse(todos);
     }
-    changeTodoStatus = (id, status) => {
-        for (const todo of this.todos) {
+
+    add(todo) {
+        const existingTodos = this.get();
+        existingTodos.push(todo);
+        this.setTodos(existingTodos);
+    }
+
+    delete(id) {
+        const existingTodos = this.get();
+        const keptTodos = existingTodos.filter((todo) => todo.id !== id);
+        this.setTodos(keptTodos);
+    }
+
+    setTodos(updatedTodos) {
+        localStorage.setItem("todos", JSON.stringify(updatedTodos));
+    }
+
+    changeStatus(id, status) {
+        const existingTodos = this.get();
+        for (const todo of existingTodos) {
             if (todo.id === id) {
                 todo.status = status;
             }
         }
+
+        this.setTodos(existingTodos);
+    }
+}
+
+const storage = new Storage();
+
+class TodoApp {
+    static ul = document.querySelector(".todos");
+    constructor() {
+        this.todos = storage.get();
+    }
+    changeTodoStatus = (id, status) => {
+        storage.changeStatus(id, status);
     };
     deleteTodo = (id) => {
-        this.todos = this.todos.filter((todo) => todo.id !== id);
+        storage.delete(id);
     };
+
+    addTodo = (todo) => {
+        storage.add(todo);
+    };
+
+    getAll() {
+        return storage.get();
+    }
 
     renderTodo = ({ text, id, status }) => {
         const li = document.createElement("li");
@@ -149,7 +179,7 @@ class TodoApp {
 
     renderTodos = () => {
         TodoApp.ul.innerHTML = "";
-        for (const todo of this.todos) {
+        for (const todo of this.getAll()) {
             this.renderTodo(todo);
         }
     };
@@ -161,13 +191,17 @@ class TodoApp {
             event.preventDefault();
             const input = document.querySelector(".todo-input");
             const textValue = input.value;
+
+            if (textValue.length < 3) {
+                return;
+            }
             const id = crypto.randomUUID();
             const todo = {
                 text: textValue,
                 status: "todo",
                 id: id
             };
-            this.todos.push(todo);
+            this.addTodo(todo);
             input.value = "";
 
             this.renderTodos();
